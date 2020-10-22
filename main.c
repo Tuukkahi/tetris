@@ -47,6 +47,7 @@ static void print_menu(WINDOW *w, int highlight)
     wrefresh(w);
 }
 
+// info window
 static void info()
 {
     WINDOW *box_win = newwin(HEIGHT + 2, WIDTH + 20 + 2, starty, startx);
@@ -145,12 +146,12 @@ int main() {
         }
     }
 
-    free(tetris_game);
     erase();
     delwin(menu_win);
     delwin(box_win);
     clrtoeol();
     endwin();
+    free(tetris_game);
     return 0;
 }
 
