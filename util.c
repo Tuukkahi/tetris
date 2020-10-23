@@ -38,7 +38,7 @@ void init_tetris(tetris_game_t *g)
     {
         for (uint8_t j = 0; j < GAME_WIDTH; ++j)
         {
-            g->board[j + i*GAME_HEIGHT] = 0;
+            g->board[j + i*GAME_WIDTH] = 0;
         }
     }
     g->tick_length = 1;

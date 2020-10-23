@@ -40,7 +40,7 @@ static void draw_game(WINDOW *w, tetris_game_t *g)
     {
         for (uint8_t j = 0; j < GAME_WIDTH; ++j)
         {
-            if (draw(j, i, &g->current) || g->board[j + i * g->height])
+            if (draw(j, i, &g->current) || g->board[j + i * g->width])
             {
                 wattron(w, A_REVERSE);
                 waddch(w, 32);
@@ -67,7 +67,7 @@ static uint8_t collision(tetris_game_t *g, int8_t delta_j, int8_t delta_i, int8_
     {
         int8_t current_j = tetrominos[t][rotation][i][0] + g->current.j + delta_j;
         int8_t current_i = tetrominos[t][rotation][i][1] + g->current.i + delta_i;
-        if (current_j < 0 || current_j >= g->width || current_i < 0 || current_i >= g->height || g->board[current_j + current_i * g->height]) {
+        if (current_j < 0 || current_j >= g->width || current_i < 0 || current_i >= g->height || g->board[current_j + current_i * g->width]) {
             return 1;
         }
     }
@@ -104,7 +104,7 @@ static void populate_new_tetromino(tetris_game_t *g)
     {
         uint8_t current_j = tetrominos[t][g->current.rotation][i][0] + g->current.j;
         uint8_t current_i = tetrominos[t][g->current.rotation][i][1] + g->current.i;
-        g->board[current_j + current_i * g->height] = 1;
+        g->board[current_j + current_i * g->width] = 1;
     }
 }
 
@@ -171,7 +171,7 @@ static void check_points(tetris_game_t *g)
         uint8_t count = 0;
         for (uint8_t j = 0; j < g->width; ++j)
         {
-            if (g->board[j + i * g->height])
+            if (g->board[j + i * g->width])
                 count++;
         }
         if (count == g->width - 1)
@@ -181,7 +181,7 @@ static void check_points(tetris_game_t *g)
             {
                 for (uint8_t j = 0; j < g->width; ++j)
                 {
-                    g->board[j + i1 * g->height] = g->board[j + (i1-1) * g->height];
+                    g->board[j + i1 * g->width] = g->board[j + (i1-1) * g->width];
                 }
             }
         }
@@ -207,7 +207,7 @@ static void check_points(tetris_game_t *g)
     }
 }
 
-void game(tetris_game_t *g)
+void game(void)
 {
     // window for the game itself
     WINDOW *game_box = newwin(GAME_HEIGHT+2, GAME_WIDTH*2+2, 0, 0);
@@ -239,7 +239,7 @@ void game(tetris_game_t *g)
 
     draw_instructions(inst_win);
 
-    g = malloc(sizeof(tetris_game_t) + GAME_WIDTH * GAME_HEIGHT * sizeof(uint8_t) + 1);
+    tetris_game_t *g = malloc(sizeof(tetris_game_t) + GAME_WIDTH * GAME_HEIGHT * sizeof(uint8_t) + 1);
     init_tetris(g);
 
     halfdelay(1);  // to wait for some time in wgetch to not run the while loop too fast
@@ -294,5 +294,6 @@ void game(tetris_game_t *g)
     delwin(game_box);
     delwin(next_win);
     delwin(next_box);
+    free(g);
     refresh();
 }

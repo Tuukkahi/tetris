@@ -96,7 +96,6 @@ int main() {
     WINDOW *box_win = newwin(HEIGHT + 2, WIDTH + 2, starty, startx);
     WINDOW *menu_win = newwin(HEIGHT, WIDTH, starty + 1, startx + 1);
 
-    tetris_game_t *tetris_game = NULL;
     while(1)
     {
 
@@ -130,7 +129,7 @@ int main() {
         {
             erase();
             refresh();
-            game(tetris_game);
+            game();
             choice = 0;
             continue;
         }
@@ -151,7 +150,6 @@ int main() {
     delwin(box_win);
     clrtoeol();
     endwin();
-    free(tetris_game);
     return 0;
 }
 

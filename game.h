@@ -33,6 +33,6 @@ typedef struct {
 
 } tetris_game_t;
 
-void game(tetris_game_t *g);
+void game();
 
 #endif
