@@ -1,3 +1,10 @@
+/**********************************************
+ * main game logic is found from this file,   *
+ * some functions are abstracted to util.c,   *
+ * and tetromino data is written out in       *
+ * tetrominos.c file                          *
+ *********************************************/
+
 #define _POSIX_C_SOURCE 199309L
 #include <stdlib.h>
 #include <stdint.h>
@@ -5,17 +12,13 @@
 #include <unistd.h>
 #include <time.h>
 #include <math.h>
+#include <pthread.h>
 
 #include "game.h"
 #include "tetrominos.h"
 #include "util.h"
 
-/**********************************************
- * main game logic is found from this file,   *
- * some functions are abstracted to util.c,   *
- * and tetromino data is written out in       *
- * tetrominos.c file                          *
- *********************************************/
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 // check if position (j,i) has a tetromino
 static uint8_t draw(uint8_t j, uint8_t i, tetromino_t *t)
@@ -56,6 +59,32 @@ static void draw_game(WINDOW *w, tetris_game_t *g)
         wmove(w, i + 1, 1);
     }
     wrefresh(w);
+}
+// draw next tetromino to it's window
+static void draw_next(tetromino_t *t, WINDOW *w)
+{
+    //werase(w);
+    for (uint8_t i = 0; i < 12; ++i)
+    {
+        for (uint8_t j = 0; j < 12; ++j)
+        {
+            if ((i >= 4 && j >= 3 && draw(j - 3, i - 4, t)))
+            {
+                wattron(w, A_REVERSE);
+                waddch(w, 32);
+                waddch(w, 32);
+                wattroff(w, A_REVERSE);
+            }
+            else 
+            {
+                waddch(w, 32);
+                waddch(w, 32);
+            }
+        }
+        wmove(w, i + 1, 1);
+    }
+    wrefresh(w);
+    return;
 }
 
 // check for collisions for the current tetromino rotated and moved by delta_j, delta_i, and r
@@ -108,63 +137,10 @@ static void populate_new_tetromino(tetris_game_t *g)
     }
 }
 
-// draw next tetromino to it's window
-static void draw_next(tetromino_t *t, WINDOW *w)
-{
-    werase(w);
-    wrefresh(w);
-    for (uint8_t i = 0; i < 12; ++i)
-    {
-        for (uint8_t j = 0; j < 12; ++j)
-        {
-            if ((i >= 4 && j >= 3 && draw(j - 3, i - 4, t)))
-            {
-                wattron(w, A_REVERSE);
-                waddch(w, 32);
-                waddch(w, 32);
-                wattroff(w, A_REVERSE);
-            }
-            else 
-            {
-                waddch(w, 32);
-                waddch(w, 32);
-            }
-        }
-    }
-    wrefresh(w);
-    return;
-}
 
-static uint8_t tick(tetris_game_t *g)
+static void check_cleared(tetris_game_t *g)
 {
-    struct timespec now;
-    clock_gettime(CLOCK_REALTIME, &now);
-    double since_previous = (now.tv_sec - g->previous_tick.tv_sec) 
-        + (now.tv_nsec - g->previous_tick.tv_nsec) / (double) 1000000000L;
-
-    // if enough time has passed since last tick, drop current tetromino or initialise new one
-    if (since_previous > g->tick_length) {
-        g->previous_tick = now;
-        if (!collision(g, 0, +2, 0))
-        {
-            g->current.i += 2;
-        }
-        else
-        {
-            populate_new_tetromino(g); // add finished tetromino to the game board
-            next_tetromino(g);
-            // if new tetromino can't move return 1 to indicate game over
-            if (collision(g, 0, 0, 0)) 
-                return 1;
-        }
-    }
-    // if game not over return 0
-    return 0;
-}
-
-static void check_points(tetris_game_t *g)
-{
-    // check if any rows are full, and increase cleared accordingly
+    // check if any rows are occupied, and increase cleared count accordingly
     uint8_t cleared = 0;
     for (uint8_t i = 0; i < g->height; ++i)
     {
@@ -189,6 +165,8 @@ static void check_points(tetris_game_t *g)
 
     cleared /= 2;
     g->cleared += cleared;
+
+    // increase score according to the cleared levels
     if (cleared == 1)
         g->score += 40*(g->level + 1);
     if (cleared == 2)
@@ -200,15 +178,13 @@ static void check_points(tetris_game_t *g)
 
     // check if level is increased, i.e. 5 cleared rows
     if (g->cleared >= (g->level+1)*5) 
-    {
         g->level += 1;
-        // the formula to compute dropping speed of tetromino from new level
-        g->tick_length = pow(0.8 - (g->level - 1) *0.007, ((double)g->level - 1));
-    }
 }
 
-void game(void)
+void *window_loop(void *arg)
 {
+    tetris_game_t *g = (tetris_game_t *) arg;
+
     // window for the game itself
     WINDOW *game_box = newwin(GAME_HEIGHT+2, GAME_WIDTH*2+2, 0, 0);
     WINDOW *game_win = newwin(GAME_HEIGHT, GAME_WIDTH*2, 1, 1);
@@ -239,21 +215,30 @@ void game(void)
 
     draw_instructions(inst_win);
 
-    tetris_game_t *g = malloc(sizeof(tetris_game_t) + GAME_WIDTH * GAME_HEIGHT * sizeof(uint8_t) + 1);
-    init_tetris(g);
-
-    halfdelay(1);  // to wait for some time in wgetch to not run the while loop too fast
-
+    struct timespec previous_tick;
+    struct timespec now;
+    struct timespec sleep;
+    clock_gettime(CLOCK_REALTIME, &previous_tick);
+    double update_interval = 1.0 / 60;
+    nodelay(stdscr, TRUE);
     uint8_t quit = 0;
     while(!quit)
     {
+        clock_gettime(CLOCK_REALTIME, &now);
+        double since_previous = (now.tv_sec - previous_tick.tv_sec) 
+            + (now.tv_nsec - previous_tick.tv_nsec) / (double) 1000000000L;
+        sleep.tv_sec = floor(update_interval - since_previous);
+        sleep.tv_nsec = (update_interval - since_previous) * 1000000000L;
+
+        nanosleep(&sleep, NULL);
+        uint8_t c = getch();
+
+        clock_gettime(CLOCK_REALTIME, &previous_tick);
+
+        pthread_mutex_lock(&lock);
         draw_next(&g->next, next_win);
         draw_stats(stats_win, g);
-        check_points(g);
-        quit = tick(g);
         draw_game(game_win, g);
-
-        uint8_t c = wgetch(game_win);
 
         switch (c) {
             case 'h':
@@ -274,26 +259,92 @@ void game(void)
             case 'p':
                 while(1)
                 {
-                    uint8_t p = wgetch(game_win);
+                    uint8_t p = getch();
                     if (p == 'q')
                     {
-                        quit = 1;
+                        g->game_over = 1;
                         break;
                     }
                     if (p == 'p') break;
                 }
                 break;
             case 'q':
-                quit = 1;
+                g->game_over = 1;
             default:
                 break;
         }
+        if(g->game_over) quit = 1;
+        pthread_mutex_unlock(&lock);
     }
 
     delwin(game_win);
     delwin(game_box);
     delwin(next_win);
     delwin(next_box);
-    free(g);
     refresh();
+
+    pthread_exit(NULL);
+}
+
+void *tick_loop(void *arg)
+{
+    struct timespec previous_tick;
+    struct timespec now;
+    struct timespec sleep;
+    clock_gettime(CLOCK_REALTIME, &previous_tick);
+    uint8_t game_over = 0;
+    tetris_game_t *g = (tetris_game_t *) arg;
+    double tick_length = 1;
+    while(!game_over)
+    {
+        clock_gettime(CLOCK_REALTIME, &now);
+        double since_previous = (now.tv_sec - previous_tick.tv_sec) 
+            + (now.tv_nsec - previous_tick.tv_nsec) / (double) 1000000000L;
+        sleep.tv_sec = floor(tick_length - since_previous);
+        sleep.tv_nsec = ((tick_length - since_previous) - sleep.tv_sec) * 1000000000L;
+        nanosleep(&sleep, NULL);
+        clock_gettime(CLOCK_REALTIME, &previous_tick);
+
+        pthread_mutex_lock(&lock);
+
+        if (g->game_over) game_over = 1;
+
+        // check for cleared rows at every tick and update tick_length
+        check_cleared(g);
+        tick_length = pow(0.8 - (g->level - 1) * 0.007, g->level - 1);
+
+        // if current tetromino can move down, move it, else introduce next tetromino
+        if (!collision(g, 0, +2, 0))
+        {
+            g->current.i += 2;
+        }
+        else
+        {
+            populate_new_tetromino(g); // add finished tetromino to the game board
+            next_tetromino(g);
+            // if new tetromino can't move, set game_over
+            if (collision(g, 0, 0, 0)) 
+                g->game_over = 1;
+        }
+
+        pthread_mutex_unlock(&lock);
+    }
+    pthread_exit(NULL);
+}
+
+void game(void)
+{
+
+    tetris_game_t *g = malloc(sizeof(tetris_game_t) + GAME_WIDTH * GAME_HEIGHT * sizeof(uint8_t) + 1);
+    srand(time(0));
+    init_tetris(g);
+
+    pthread_t window_thread;  // thread to update window and get input at 60Hz
+    pthread_t tick_thread;  // thread to drop current tetromino at speed according to level
+
+    pthread_create(&window_thread, NULL, window_loop, (void *) g);
+    pthread_create(&tick_thread, NULL, tick_loop, (void *) g);
+    pthread_join(tick_thread, NULL);
+    pthread_join(window_thread, NULL);
+    free(g);
 }

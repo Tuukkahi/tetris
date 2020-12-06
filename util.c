@@ -1,16 +1,14 @@
-#define _POSIX_C_SOURCE 199309L
+/***************************************
+ * some util functions for game.c file,*
+ * initialisations and printing of     *
+ * info and stats windows              *
+ ***************************************/
 #include <stdlib.h>
 #include <stdint.h>
 #include <ncurses.h>
 #include <time.h>
 
 #include "game.h"
-
-/***************************************
- * some util functions for game.c file,*
- * initialisations and printing of     *
- * info and stats windows              *
- ***************************************/
 
 void next_tetromino(tetris_game_t *g)
 {
@@ -41,8 +39,7 @@ void init_tetris(tetris_game_t *g)
             g->board[j + i*GAME_WIDTH] = 0;
         }
     }
-    g->tick_length = 1;
-    clock_gettime(CLOCK_REALTIME, &g->previous_tick);
+    g->game_over = 0;
 }
 
 void draw_instructions(WINDOW *w)
