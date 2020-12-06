@@ -27,9 +27,8 @@ typedef struct {
     uint8_t level;
     uint16_t score;
     uint16_t cleared;
-    struct timespec previous_tick;
-    double tick_length;
     uint8_t board[1];
+    uint8_t game_over;
 
 } tetris_game_t;
 
