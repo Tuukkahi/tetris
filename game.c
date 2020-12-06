@@ -6,6 +6,10 @@
  *********************************************/
 
 #define _POSIX_C_SOURCE 199309L
+#include "game.h"
+#include "tetrominos.h"
+#include "util.h"
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <ncurses.h>
@@ -14,9 +18,6 @@
 #include <math.h>
 #include <pthread.h>
 
-#include "game.h"
-#include "tetrominos.h"
-#include "util.h"
 
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -63,7 +64,6 @@ static void draw_game(WINDOW *w, tetris_game_t *g)
 // draw next tetromino to it's window
 static void draw_next(tetromino_t *t, WINDOW *w)
 {
-    //werase(w);
     for (uint8_t i = 0; i < 12; ++i)
     {
         for (uint8_t j = 0; j < 12; ++j)
@@ -103,7 +103,7 @@ static uint8_t collision(tetris_game_t *g, int8_t delta_j, int8_t delta_i, int8_
     return 0;
 }
 
-// rotate tetromino according to the wall kick data in tetrominos.c
+// rotate tetromino according to the wall kick data from tetrominos.c
 static void rotate(tetris_game_t *g)
 {
     for (uint8_t k = 0; k < 4; ++k)
@@ -181,7 +181,7 @@ static void check_cleared(tetris_game_t *g)
         g->level += 1;
 }
 
-void *window_loop(void *arg)
+static void *window_loop(void *arg)
 {
     tetris_game_t *g = (tetris_game_t *) arg;
 
@@ -215,25 +215,26 @@ void *window_loop(void *arg)
 
     draw_instructions(inst_win);
 
-    struct timespec previous_tick;
+    struct timespec previous_frame;
     struct timespec now;
     struct timespec sleep;
-    clock_gettime(CLOCK_REALTIME, &previous_tick);
-    double update_interval = 1.0 / 60;
+    clock_gettime(CLOCK_REALTIME, &previous_frame);
+    double frame_interval = 1.0 / 60;
     nodelay(stdscr, TRUE);
     uint8_t quit = 0;
     while(!quit)
     {
         clock_gettime(CLOCK_REALTIME, &now);
-        double since_previous = (now.tv_sec - previous_tick.tv_sec) 
-            + (now.tv_nsec - previous_tick.tv_nsec) / (double) 1000000000L;
-        sleep.tv_sec = floor(update_interval - since_previous);
-        sleep.tv_nsec = (update_interval - since_previous) * 1000000000L;
+        double since_previous = (now.tv_sec - previous_frame.tv_sec) 
+            + (now.tv_nsec - previous_frame.tv_nsec) / (double) 1000000000L;
+
+        sleep.tv_sec = floor(frame_interval - since_previous);
+        sleep.tv_nsec = ((frame_interval - since_previous) - sleep.tv_sec) * 1000000000L;
 
         nanosleep(&sleep, NULL);
         uint8_t c = getch();
 
-        clock_gettime(CLOCK_REALTIME, &previous_tick);
+        clock_gettime(CLOCK_REALTIME, &previous_frame);
 
         pthread_mutex_lock(&lock);
         draw_next(&g->next, next_win);
@@ -253,7 +254,7 @@ void *window_loop(void *arg)
             case 'l':
                 if(!collision(g, 2, 0, 0)) g->current.j += 2;
                 break;
-            case 32:
+            case 32:  // spacebar
                 while(!collision(g, 0, 2, 0)) g->current.i += 2;
                 break;
             case 'p':
@@ -286,7 +287,7 @@ void *window_loop(void *arg)
     pthread_exit(NULL);
 }
 
-void *tick_loop(void *arg)
+static void *tick_loop(void *arg)
 {
     struct timespec previous_tick;
     struct timespec now;

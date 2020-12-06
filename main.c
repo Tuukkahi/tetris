@@ -1,15 +1,15 @@
-#include "main.h"
-#include "game.h"
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <ncurses.h>
-
 /*******************************************
  * main menu logic and calling of the game *
  * function happens here, game itself      *
  * is in game.c file                       *
  ******************************************/
+
+#include "main.h"
+#include "game.h"
+#include <stdlib.h>
+#include <stdint.h>
+#include <ncurses.h>
+
 
 int startx = 0;
 int starty = 0;
