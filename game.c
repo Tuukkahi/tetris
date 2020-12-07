@@ -340,26 +340,32 @@ static void *tick_loop(void *arg)
     pthread_mutex_unlock(&pause_mutex);
 
     pthread_mutex_lock(&game_mutex);
-      if (g->game_over) game_over = 1;
-      // if current tetromino can move down, move it, else introduce next tetromino
-      if (!collision(g, 0, +2, 0))
-      {
-        g->current.i += 2;
-      }
-      else
-      {
-        populate_new_tetromino(g); // add finished tetromino to the game board
-        // check for cleared rows and update tick_length
-        check_cleared(g);
-        tick_length = pow(0.8 - (g->level - 1) * 0.007, g->level - 1);
-        next_tetromino(g); // introduce new tetromino
-        // if new tetromino can't move, game_over
-        if (collision(g, 0, 0, 0)) 
-          g->game_over = 1;
-      }
-    pthread_mutex_unlock(&game_mutex);
-  }
-  pthread_exit(NULL);
+        if (g->game_over) game_over = 1;
+
+
+        // if current tetromino can move down, move it, else introduce next tetromino
+        if (!collision(g, 0, +2, 0))
+        {
+            g->current.i += 2;
+        }
+        else
+        {
+            //add finished tetromino to the game board and introduce next one
+            populate_new_tetromino(g);
+            next_tetromino(g);
+
+            // check for cleared rows at every tick and update tick_length
+            check_cleared(g);
+            tick_length = pow(0.8 - (g->level - 1) * 0.007, g->level - 1);
+
+            // if new tetromino can't move, set game_over
+            if (collision(g, 0, 0, 0)) 
+                g->game_over = 1;
+        }
+
+        pthread_mutex_unlock(&game_mutex);
+    }
+    pthread_exit(NULL);
 }
 
 void game(void)
