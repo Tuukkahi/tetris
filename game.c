@@ -310,9 +310,6 @@ static void *tick_loop(void *arg)
 
         if (g->game_over) game_over = 1;
 
-        // check for cleared rows at every tick and update tick_length
-        check_cleared(g);
-        tick_length = pow(0.8 - (g->level - 1) * 0.007, g->level - 1);
 
         // if current tetromino can move down, move it, else introduce next tetromino
         if (!collision(g, 0, +2, 0))
@@ -321,8 +318,14 @@ static void *tick_loop(void *arg)
         }
         else
         {
-            populate_new_tetromino(g); // add finished tetromino to the game board
+            //add finished tetromino to the game board and introduce next one
+            populate_new_tetromino(g);
             next_tetromino(g);
+
+            // check for cleared rows at every tick and update tick_length
+            check_cleared(g);
+            tick_length = pow(0.8 - (g->level - 1) * 0.007, g->level - 1);
+
             // if new tetromino can't move, set game_over
             if (collision(g, 0, 0, 0)) 
                 g->game_over = 1;
