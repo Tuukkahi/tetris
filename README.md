@@ -1,6 +1,7 @@
 # Tetris
 
-![](demo.gif)
+
+<img src="demo.gif" width="500"/>
 
 ## Instructions
 
