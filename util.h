@@ -1,8 +1,8 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include <ncurses.h>
 #include "game.h"
+#include <ncurses.h>
 
 void next_tetromino(tetris_game_t *g);
 

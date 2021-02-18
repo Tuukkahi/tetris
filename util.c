@@ -3,15 +3,14 @@
  * initialisations and printing of     *
  * info and stats windows              *
  ***************************************/
-#include <stdlib.h>
-#include <stdint.h>
 #include <ncurses.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <time.h>
 
 #include "game.h"
 
-void next_tetromino(tetris_game_t *g)
-{
+void next_tetromino(tetris_game_t *g) {
     g->current = g->next;
     g->current.j = 8;
     g->next.type = rand() % 7;
@@ -20,8 +19,7 @@ void next_tetromino(tetris_game_t *g)
     g->next.j = 0;
 }
 
-void init_tetris(tetris_game_t *g)
-{
+void init_tetris(tetris_game_t *g) {
     g->width = GAME_WIDTH;
     g->height = GAME_HEIGHT;
     g->next.type = rand() % 7;
@@ -32,18 +30,15 @@ void init_tetris(tetris_game_t *g)
     g->level = 0;
     g->score = 0;
     g->cleared = 0;
-    for (uint8_t i = 0; i < GAME_HEIGHT; ++i)
-    {
-        for (uint8_t j = 0; j < GAME_WIDTH; ++j)
-        {
-            g->board[j + i*GAME_WIDTH] = 0;
+    for (uint8_t i = 0; i < GAME_HEIGHT; ++i) {
+        for (uint8_t j = 0; j < GAME_WIDTH; ++j) {
+            g->board[j + i * GAME_WIDTH] = 0;
         }
     }
     g->game_over = 0;
 }
 
-void draw_instructions(WINDOW *w)
-{
+void draw_instructions(WINDOW *w) {
     int x = 2;
     int y = 2;
 
@@ -64,13 +59,11 @@ void draw_instructions(WINDOW *w)
     wrefresh(w);
 }
 
-void draw_stats(WINDOW *w, tetris_game_t *g)
-{
+void draw_stats(WINDOW *w, tetris_game_t *g) {
     int x = 2;
     int y = 4;
     mvwprintw(w, y, x, "score: %u", g->score);
-    y+=2;
+    y += 2;
     mvwprintw(w, y, x, "level: %lu", g->level);
     wrefresh(w);
 }
-

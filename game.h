@@ -1,9 +1,9 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include <ncurses.h>
 #include <stdint.h>
 #include <time.h>
-#include <ncurses.h>
 
 #define GAME_WIDTH 21
 #define GAME_HEIGHT 40
